@@ -21,7 +21,10 @@ trait IO[A] {
   // prints "Fetching user", fetches user 1234 from db and returns it.
   // Note: There is a test for `andThen` in `exercises.action.fp.IOTest`.
   def andThen[Other](other: IO[Other]): IO[Other] =
-    ???
+    IO {
+      this.unsafeRun()
+      other.unsafeRun()
+    }
 
   // Popular alias for `andThen` (cat-effect, Monix, ZIO).
   // For example,
@@ -30,7 +33,7 @@ trait IO[A] {
   //       Another popular symbol is <* so that `action1 <* action2`
   //       executes `action1` and then `action2` but returns the result of `action1`
   def *>[Other](other: IO[Other]): IO[Other] =
-    ???
+    this.andThen(other)
 
   // Runs the current action (`this`) and update the result with `callback`.
   // For example,
@@ -40,8 +43,9 @@ trait IO[A] {
   // Fetches the user with id 1234 from the database and returns its name.
   // Note: `callback` is expected to be an FP function (total, deterministic, no action).
   //       Use `flatMap` if `callBack` is not an FP function.
-  def map[Next](callBack: A => Next): IO[Next] =
-    ???
+  def map[Next](callBack: A => Next): IO[Next] = {
+    IO(callBack(unsafeRun()))
+  }
 
   // Runs the current action (`this`), if it succeeds passes the result to `callback` and
   // runs the second action.
@@ -53,7 +57,7 @@ trait IO[A] {
   // Fetches the user with id 1234 from the database and send them an email using the email
   // address found in the database.
   def flatMap[Next](callback: A => IO[Next]): IO[Next] =
-    ???
+    IO(callback(unsafeRun()).unsafeRun())
 
   // Runs the current action, if it fails it executes `cleanup` and rethrows the original error.
   // If the current action is a success, it will return the result.
@@ -159,7 +163,7 @@ object IO {
   // If no error occurs, it returns the users in the same order:
   // List(User(1111, ...), User(2222, ...), User(3333, ...))
   def sequence[A](actions: List[IO[A]]): IO[List[A]] =
-    ???
+    IO(actions.map(_.unsafeRun()))
 
   // `traverse` is a shortcut for `map` followed by `sequence`, similar to how
   // `flatMap`  is a shortcut for `map` followed by `flatten`
